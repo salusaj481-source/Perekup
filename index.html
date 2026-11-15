@@ -637,7 +637,15 @@ const TITLES=[
  {id:'master',n:'🔧 Мастер',d:'Навык ремонта 85% и выше',p:.02,c:0,f:.08,ok:g=>g.skill>=.85},
  {id:'perekup',n:'💼 Перекуп',d:'Продай 50 телефонов',p:.05,c:.05,f:0,ok:g=>g.sold>=50},
  {id:'magnate',n:'💰 Магнат',d:'Накопи 60 000 ₽',p:.05,c:.08,f:0,ok:g=>!!g.won||g.money>=60000},
- {id:'legend',n:'🏆 Легенда',d:'Продай 100 телефонов',p:.08,c:.1,f:.05,ok:g=>g.sold>=100}];
+ {id:'legend',n:'🏆 Легенда',d:'Продай 100 телефонов',p:.08,c:.1,f:.05,ok:g=>g.sold>=100},
+ {id:'mech',n:'🔩 Механик',d:'Почини или отдай в ремонт 10 дефектов',p:.02,c:0,f:.06,ok:g=>(g.fixes||0)>=10},
+ {id:'collector',n:'📦 Коллекционер',d:'Держи 15 телефонов на складе одновременно',p:.03,c:.04,f:0,ok:g=>g.phones.length>=15},
+ {id:'dealer',n:'🚗 Автодилер',d:'3 машины в гараже одновременно',p:.04,c:.04,f:0,ok:g=>!!g.cars&&g.cars.length>=3},
+ {id:'techpro',n:'🛠 Технарь',d:'Сделай 50 ремонтов',p:.04,c:.03,f:.1,ok:g=>(g.fixes||0)>=50},
+ {id:'star',n:'🌟 Звезда площадки',d:'50+ отзывов, средняя оценка от 4.8★',p:.06,c:.12,f:0,ok:g=>g.rep.n>=50&&g.rep.s/g.rep.n>=4.8},
+ {id:'guru',n:'🧠 Гуру ремонта',d:'Навык ремонта 90%',p:.03,c:0,f:.12,ok:g=>g.skill>=.9},
+ {id:'top',n:'🥇 Топ-продавец',d:'Продай 250 телефонов',p:.12,c:.15,f:.08,ok:g=>g.sold>=250},
+ {id:'mill',n:'💎 Миллионер',d:'Накопи 1 000 000 ₽',p:.1,c:.1,f:.05,ok:g=>g.money>=1000000}];
 const tOk=x=>x.own?IS_ADMIN:x.ok(G);
 function TB(){const z=TITLES[1];if(!G)return z;const x=TITLES.find(y=>y.id==G.title);return x&&tOk(x)?x:z}
 function tBoost(x){const a=[];if(x.p)a.push('+'+Math.round(x.p*100)+'% к цене продажи');if(x.c)a.push('+'+Math.round(x.c*100)+'% к шансу продажи');if(x.f)a.push('+'+Math.round(x.f*100)+'% к шансу ремонта');return a.join(' · ')||'без бонусов'}
@@ -661,6 +669,25 @@ function applyEv(e){const p=e.p||{};switch(e.type){
  case'picky':{const ls=G.phones.filter(x=>x.status=='listed');if(!ls.length)return false;const x=P(ls);x.status='busy';G.queue.push({t:`🧐 Придирчивый покупатель смотрит ${x.name}: «Скиньте 8%, и заберу сейчас». ${rub(x.ask)} → ${rub(x.ask*.92)}.`,b:[['Согласиться',()=>fin(x,r100(x.ask*.92))],['Отказать',()=>{x.status='listed';log('Отказал придирчивому покупателю.')}]]});return'🧐 Придирчивый покупатель!'}
  case'scam':{const a=Math.min(Math.max(G.money,0),+p.a||0);G.money-=a;log(`🚨 Предоплата ${rub(a)} ушла. Продавец пропал.`);info(`📢 🚨 Мошенник! Потеряно ${rub(a)}. Урок: предоплата без проверки телефона — риск.`);return'🚨 Мошенник!'}
  case'nl':newListings();info('📢 🔄 На площадке появились новые объявления.');return'🔄 Новые объявления!';
+ case'tax':{const a=Math.min(Math.max(Math.round(G.money*.03),0),15000);G.money-=a;log(`🧾 Налоговая проверка: списано ${rub(a)}.`);info(`📢 🧾 Налоговая проверка! Списано ${rub(a)} (3% от денег, не больше 15 000 ₽).`);return'🧾 Налоговая проверка!'}
+ case'bonus':{const a=+p.a||0;G.money+=a;log(`🎁 Подарок от создателя: ${rub(a)}.`);info(`📢 🎁 Подарок от создателя: +${rub(a)}!`);return'🎁 Подарок: +'+rub(a)}
+ case'hot':{const b=p.b;if(!BR[b]||G.brand[b]==null)return false;G.brand[b]*=1.15;info(`📢 🔥 Ажиотаж на ${BR[b]}! Цены на б/у +15%.`);return'🔥 Ажиотаж на '+BR[b]}
+ case'bf':{G.listings.forEach(l=>{if(l.price){l.price=r100(l.price*.85);if(l.min)l.min=Math.min(l.min,l.price)}});info('📢 🛍 Чёрная пятница: цены в объявлениях упали на 15%. Успей купить!');return'🛍 Чёрная пятница!'}
+ case'wave':{const ls=G.phones.filter(x=>x.status=='listed');if(!ls.length)return false;ls.forEach(x=>{x.ask=r100(x.ask*1.1)});info('📢 🛒 Волна покупателей: цены на выставленные телефоны +10%.');return'🛒 Волна покупателей!'}
+ case'theft':{const iv=G.phones.filter(x=>x.status=='inv');if(!iv.length)return false;const x=P(iv);G.phones=G.phones.filter(y=>y!=x);log(`🕵️ Кража со склада: пропал ${x.name}.`);info(`📢 🕵️ Кража со склада! Пропал ${x.name}.`);return'🕵️ Кража со склада!'}
+ case'class':{G.skill=Math.min(.9,G.skill+.05);info('📢 📚 Мастер-класс от создателя: навык ремонта +5%.');return'📚 Мастер-класс!'}
+ case'lottery':{if(Math.random()<.1){G.money+=50000;log('🎰 Выигрыш в лотерее: 50 000 ₽!');info('📢 🎰 Лотерея создателя: ты выиграл 50 000 ₽!')}else info('📢 🎰 Лотерея создателя: в этот раз не повезло.');return'🎰 Лотерея!'}
+ case'vip':{const iv=G.phones.filter(x=>x.status=='inv');if(!iv.length)return false;const x=iv.reduce((a,b)=>mv(b)>mv(a)?b:a),o=r100(mv(x)*(1-pen(x.defects))*1.25);G.queue.push({t:`💎 VIP-покупатель готов забрать ${x.name} за ${rub(o)} (на 25% выше рынка). Без торга и проверок.`,b:[['Продать',()=>{G.money+=o;G.phones=G.phones.filter(y=>y!=x);addRev(5);log(`💎 VIP-выкуп: ${x.name} за ${rub(o)}. Прибыль: ${rub(o-x.buy-x.inv)}.`);checkWin()}],['Отказаться',()=>{}]]});return'💎 VIP-покупатель!'}
+ case'audit':{let n=0,f=0;G.phones.forEach(x=>{if(x.status=='listed'&&x.hide){x.status='inv';x.hide=0;x.hideOpt=false;n++;f+=1500}});if(!n)return false;G.money-=f;log(`🕵️ Проверка объявлений: сняты ${n} шт., штраф ${rub(f)}.`);info(`📢 🕵️ Проверка объявлений! Сняты телефоны со скрытыми дефектами: ${n}. Штраф ${rub(f)}.`);return'🕵️ Проверка объявлений!'}
+ case'recall':{const l=mk('honest'),q={id:G.id++,name:l.name,brand:l.brand,base:l.base,fr:l.fr,bk:l.bk,col:l.col,cos:l.cos,defects:[...l.defects],buy:l.price,inv:0,status:'inv',clean:0,glass:0,photo:0,hide:0};G.returns=G.returns||[];G.returns.push({day:G.day+1,refund:r100(l.price*.8),p:q});info('📢 ↩️ Массовый возврат: завтра покупатель вернёт телефон и потребует деньги назад.');return'↩️ Массовый возврат!'}
+ case'parcel':{if(G.phones.length>=G.cap)return false;const l=mk(P(['honest','desperate']));addPhone(l,0,[]);info(`📢 📦 Посылка от создателя: на склад добавлен ${l.name}!`);return'📦 Посылка от создателя!'}
+ case'tools':{G.inv.glue=(G.inv.glue||0)+5;G.inv.alcohol=(G.inv.alcohol||0)+5;info('📢 🧰 Раздача расходников: клей B-7000 ×5 и спирт ×5.');return'🧰 Раздача расходников!'}
+ case'contest':{for(let i=0;i<3;i++)addRev(5);info('📢 🏅 Конкурс продавцов: тебе начислены 3 отзыва на 5★.');return'🏅 Конкурс продавцов!'}
+ case'jackpot':{if(Math.random()<.02){G.money+=500000;log('💰 ДЖЕКПОТ: +500 000 ₽!');info('📢 💰 ДЖЕКПОТ! Ты выиграл 500 000 ₽!')}else info('📢 💰 Джекпот создателя: у тебя шанс был 2%, но не повезло.');return'💰 Джекпот!'}
+ case'meets':{G.meets+=2;info('📢 🤝 Праздничные встречи: сегодня на 2 встречи больше.');return'🤝 +2 встречи!'}
+ case'deduct':{const a=Math.min(Math.round(Math.max(G.money,0)*.05),20000);G.money+=a;log(`💸 Налоговый вычет: +${rub(a)}.`);info(`📢 💸 Налоговый вычет: тебе вернули ${rub(a)} (5%, но не больше 20 000 ₽).`);return'💸 Налоговый вычет!'}
+ case'swing':{for(const b in G.brand)G.brand[b]*=R(.9,1.1);info('📢 🎢 Рыночные качели: цены на разные бренды изменились на ±10%.');return'🎢 Рыночные качели!'}
+ case'ban':{const b=p.b;if(!BR[b]||G.brand[b]==null)return false;G.brand[b]*=.7;info(`📢 🚫 Санкции против ${BR[b]}: б/у на рынке подешевели на 30%.`);return'🚫 Санкции: '+BR[b]}
  case'msg':info('👑 Создатель: '+esc(p.text||''));return'👑 Создатель: '+String(p.text||'').slice(0,80)}
  return false}
 function onWorld(snap){
@@ -699,6 +726,8 @@ function admDraw(){const o=$('admDlg');if(!o||!G)return;
  <div class=g style="grid-template-columns:1fr auto"><input id=admMoney type=number inputmode=numeric placeholder="Точная сумма" style="${sel}">${b('Задать','mset')}</div>
  <h3>📅 Время и игрок</h3><div class=g>${b('▶ Следующий день','day')}${b('🤝 Встречи до 5','meets')}${b('⭐ +1 отзыв 5★','rep')}${b('⭐ +10 отзывов','rep10')}${b('🔧 Навык 90%','skill')}${b('📦 Склад +5','cap')}${b('💚 Воскресить','revive')}${b('🏦 Списать долг','debt')}</div>
  <h3>🎲 События <span class=m>(🌍 уходят всем)</span></h3><div class=g>${b('🎲 Случайное','evr')}${b('🌙 Ночной покупатель','night')}${b('🧐 Придирчивый покупатель','picky')}${b('🚨 Мошенник','scam')}${b('↩️ Возврат телефона','ret')}${b('📉 Обвал рынка','crash')}${b('📈 Бум рынка','boom')}${b('🪙 Курс ×2','coin2')}${b('🪙 Курс ÷2','coin05')}</div>
+ <h3>🆕 Новые события <span class=m>(🌍 всем)</span></h3><div class=g>${b('🧾 Налоговая проверка','tax')}${b('🎁 +5 000 ₽ всем','bonus5')}${b('🎁 +25 000 ₽ всем','bonus25')}${b('🔥 Ажиотаж на бренд','hot')}${b('🛍 Чёрная пятница','bf')}${b('🛒 Волна покупателей','wave')}${b('🕵️ Кража со склада','theft')}${b('📚 Мастер-класс','cls')}${b('🎰 Лотерея 50 000 ₽','lot')}</div>
+ <h3>🧩 Ещё события <span class=m>(🌍 всем)</span></h3><div class=g>${b('💎 VIP-покупатель','vip')}${b('🕵️ Проверка объявлений','audit')}${b('↩️ Массовый возврат','recall')}${b('📦 Посылка с телефоном','parcel')}${b('🧰 Расходники ×5','tools')}${b('🏅 Конкурс +3 отзыва','contest')}${b('💰 Джекпот 500 000 ₽ (2%)','jackpot')}${b('🤝 +2 встречи','meets2')}${b('💸 Налоговый вычет','deduct')}${b('🎢 Рыночные качели','swing')}${b('🚫 Санкции на бренд','ban')}</div>
  <h3>📱 Бренд</h3><select id=admBr style="${sel}">${bo}</select><div class=g>${b('📉 Новая линейка','drop')}${b('📈 Вырос спрос','up')}</div>
  <h3>📦 Объявления и товар</h3><div class=g>${b('🔄 Новые объявления','nl')}${b('🚗 Новые машины','nc')}${b('🎁 Выдать телефон','gift')}</div>
  <h3>✉️ Своё сообщение</h3><div class=g style="grid-template-columns:1fr auto"><input id=admTxt placeholder="Текст события" style="${sel}">${b('Показать','msg')}</div>`}
@@ -728,6 +757,16 @@ Object.assign(ADM,{
  night:()=>gl('night'),picky:()=>gl('picky'),
  scam:()=>gl('scam',{a:r100(R(2000,8000))}),nl:()=>gl('nl'),
  msg:()=>{const v=$('admTxt').value.trim();if(!v)throw new Error('Введите текст');return gl('msg',{text:v})}
+});
+Object.assign(ADM,{
+ tax:()=>gl('tax'),bonus5:()=>gl('bonus',{a:5000}),bonus25:()=>gl('bonus',{a:25000}),
+ hot:()=>gl('hot',{b:$('admBr').value}),bf:()=>gl('bf'),wave:()=>gl('wave'),
+ theft:()=>gl('theft'),cls:()=>gl('class'),lot:()=>gl('lottery')
+});
+Object.assign(ADM,{
+ vip:()=>gl('vip'),audit:()=>gl('audit'),recall:()=>gl('recall'),parcel:()=>gl('parcel'),
+ tools:()=>gl('tools'),contest:()=>gl('contest'),jackpot:()=>gl('jackpot'),meets2:()=>gl('meets'),
+ deduct:()=>gl('deduct'),swing:()=>gl('swing'),ban:()=>gl('ban',{b:$('admBr').value})
 });
 function adm(k){if(!G)return;try{admMsg=(ADM[k]()||'Готово')}catch(e){admMsg='⚠️ '+e.message}
  if(G.queue.length){admClose();go('game');return}
@@ -804,4 +843,43 @@ function promoHTML(){return`<section><h3>🎁 Промокод</h3><p class=m>Е
 function promo(){const el=$('promoIn');const v=el?el.value.trim().toLowerCase():'';if(!v)return;el.value='';
  if(v===SECRET_CODE){if(IS_ADMIN)dlg({title:'Промокод',text:'Режим создателя уже включён.',noCancel:1});else adminLogin();return}
  dlg({title:'Промокод',text:'Такого промокода не существует.',noCancel:1})}
+
+/* ===== Новый интерфейс ремонта ===== */
+let repF='all';
+const repBest=p=>{let b=null;p.defects.filter(d=>D[d].cost).forEach(k=>{const sv=r50(p.base*D[k].cost),g=Math.round(mv(p)*D[k].pen)-sv;if(!b||g>b.g)b={k,sv,g}});return b};
+const _diy=diy;diy=function(id,k){const p=ph(id),n=p?p.defects.length:0;_diy.apply(this,arguments);if(p&&p.defects.length<n)G.fixes=(G.fixes||0)+1};
+const _svc=svc;svc=function(id,k){const p=ph(id),was=p&&p.status;_svc.apply(this,arguments);if(p&&p.status=='repair'&&was!='repair')G.fixes=(G.fixes||0)+1};
+function svcX(id,k){const p=ph(id);if(!p||!D[k])return;const c=r50(p.base*D[k].cost*1.6);if(G.money<c){G.note='Не хватает денег на экспресс-ремонт.';return render()}G.money-=c;p.inv+=c;p.defects=p.defects.filter(x=>x!=k);G.fixes=(G.fixes||0)+1;log(`⚡ Экспресс-ремонт ${p.name}: «${D[k].n}» устранено сразу за ${rub(c)}.`);render()}
+function svcAll(){let n=0,s=0;G.phones.forEach(p=>{if(p.status=='repair')return;const b=repBest(p);if(!b||b.g<=0||G.money<b.sv)return;G.money-=b.sv;p.inv+=b.sv;p.status='repair';p.ready=G.day+1;p.fix=b.k;n++;s+=b.sv});G.fixes=(G.fixes||0)+n;log(n?`🏪 В сервис отдано телефонов: ${n} на ${rub(s)}. Будут готовы завтра.`:'Нет выгодных ремонтов или не хватает денег.');render()}
+function repApp(){
+ const g=G,bg='linear-gradient(135deg,#1abc9c,#0f766e)';
+ const NT=()=>{const t=g.note?`<div class=wr style="margin:12px">${g.note}</div>`:'';g.note='';return t};
+ const fixable=p=>p.status!='repair'&&p.defects.some(d=>D[d].cost);
+ const all=g.phones.filter(p=>p.status=='repair'||fixable(p)),inShop=all.filter(p=>p.status=='repair'),fix=all.filter(fixable);
+ const pot=fix.reduce((a,p)=>a+p.defects.filter(d=>D[d].cost).reduce((s,d)=>s+mv(p)*D[d].pen-p.base*D[d].cost,0),0);
+ const list=(repF=='fix'?fix:repF=='shop'?inShop:all).slice().sort((a,b)=>{const x=repBest(a),y=repBest(b);return(y?y.g:-1e9)-(x?x.g:-1e9)});
+ const worth=fix.filter(p=>{const b=repBest(p);return b&&b.g>0});
+ const chip=(k,t)=>`<button ${repF==k?'class=pr':''} onclick="repF='${k}';go('stub',ci)">${t}</button>`;
+ const card=p=>{const best=repBest(p);
+  const head=`<div style="display:flex;gap:12px"><div style="width:96px;flex:none;border-radius:12px;overflow:hidden">${img(p)}</div><div><b>${p.name}</b><br><span class=m>Куплен за ${rub(p.buy)} · вложено ${rub(p.inv)}</span>${p.status=='repair'?`<br><b style="color:#1abc9c">🏪 В мастерской до дня ${p.ready}</b>`:best?`<br><span class=ok>Потенциал: +${rub(Math.max(0,best.g))}</span>`:''}</div></div>`;
+  if(p.status=='repair')return`<div class=bx style="margin:10px 0">${head}</div>`;
+  return`<div class=bx style="margin:10px 0">${head}${p.defects.filter(d=>D[d].cost).map(k=>{const d=D[k],sv=r50(p.base*d.cost),df=Math.max(100,r50(p.base*d.cost*.4)),ex=r50(p.base*d.cost*1.6),gain=Math.round(mv(p)*d.pen),net=gain-sv,ch=Math.round(chance(k)*100),isBest=best&&best.k==k&&net>0;
+   return`<div style="border-top:1px solid var(--bd);margin-top:10px;padding-top:10px"><b>${d.n}</b>${isBest?' <span class=ok>⭐ выгоднее всего</span>':''}<br><span class=m>Цена вырастет на ~${rub(gain)} · чистая выгода ${net>=0?'+':''}${rub(net)}</span><div style="height:6px;border-radius:3px;background:var(--bd);margin:8px 0 2px"><div style="height:100%;width:${ch}%;background:#1abc9c;border-radius:3px"></div></div><span class=m>Шанс починить самому: ${ch}%</span><div class=g><button onclick="diy(${p.id},'${k}');go('stub',ci)">🔧 Сам: ${rub(df)}</button><button onclick="svc(${p.id},'${k}');go('stub',ci)">🏪 Сервис: ${rub(sv)}<br><span class=m>за 1 день</span></button></div><div class=g style="grid-template-columns:1fr"><button class=pr onclick="svcX(${p.id},'${k}');go('stub',ci)">⚡ Экспресс: ${rub(ex)} · сразу и 100%</button></div></div>`}).join('')}</div>`};
+ return hd('Ремонт',bg)+`<div style="background:${bg};color:#fff;padding:0 16px 20px"><div>Можно заработать на ремонте</div><div style="font-size:44px;font-weight:700">${rub(Math.max(0,pot))}</div><div class=chs style="flex-wrap:wrap"><button>Телефонов: ${g.phones.length}</button><button>Нужен ремонт: ${fix.length}</button><button>В мастерской: ${inShop.length}</button><button>Навык: ${Math.round(g.skill*100)}%</button><button>Ремонтов: ${g.fixes||0}</button></div></div>${NT()}<div class=bx>✨ Сам: дёшево, но есть риск порвать шлейф. 🏪 Сервис: надёжно, готово через день. ⚡ Экспресс: в 1,6 раза дороже обычного сервиса, зато мгновенно и без риска.</div><div style="padding:0 12px"><div class=g style="grid-template-columns:repeat(3,1fr)">${chip('all','Все ('+all.length+')')}${chip('fix','Чинить ('+fix.length+')')}${chip('shop','В сервисе ('+inShop.length+')')}</div>${worth.length?`<button class=pr style="width:100%;margin:10px 0" onclick="svcAll();go('stub',ci)">🏪 Отдать выгодные в сервис (${worth.length})</button>`:''}<h2 style="font-size:22px">Ваши телефоны</h2>${list.length?list.map(card).join(''):'<p style="text-align:center;margin:40px 0"><b>Нет телефонов для ремонта</b><br><span class=m>Купите телефон в «Перекупе»: выгоднее всего чинить те, что с трещиной или потёртостями.</span></p>'}</div>`}
+
+/* ===== Новая карточка телефона («Мои телефоны») ===== */
+function pc(p){
+ const val=r100(mv(p)*(1-pen(p.defects))),prof=val-p.buy-p.inv;
+ const chips=p.defects.length?p.defects.map(k=>`<span style="display:inline-block;background:#3a2a0a;color:#ffcf6b;border-radius:10px;padding:3px 9px;font-size:12px;margin:2px 4px 2px 0">${D[k].n}</span>`).join(''):'<span class=ok>✔ Дефектов нет</span>';
+ let h=`<div class=cd><div style="display:flex;gap:12px"><div style="width:96px;flex:none;border-radius:12px;overflow:hidden">${img(p)}</div><div style="flex:1;min-width:0"><b>${p.name}</b><div class=m>Куплен за ${rub(p.buy)}${p.inv?` · вложено ${rub(p.inv)}`:''}</div><div class=m>Рыночная цена ≈ ${rub(val)}</div><div class="${prof>=0?'ok':'bad'}"><b>${prof>=0?'+':''}${rub(prof)}</b> <span class=m>возможная прибыль</span></div></div></div><div style="margin:8px 0">${chips}</div>`;
+ if(p.status=='repair')return h+`<p class=m>🏪 В сервисе до дня ${p.ready}</p></div>`;
+ if(p.status=='busy')return h+`<p class=m>Покупатель торгуется…</p></div>`;
+ if(p.status=='listed')return h+`<p>🏷 Выставлен за <b>${rub(p.ask)}</b> (${T[p.tier][2]})${p.hide?' · дефекты скрыты':''}</p><button onclick="unlist(${p.id})">Снять с продажи</button></div>`;
+ const pb=(on,fn,label,hint)=>`<button ${on?'disabled':''} onclick="${fn}(${p.id})">${label}${on?' ✓':''}<br><span class=m>${hint}</span></button>`;
+ h+=`<div class=m style="margin-top:10px"><b>Подготовка</b></div><div class=g style="grid-template-columns:repeat(3,1fr)">${pb(p.clean,'clean','🧽 Чистка','+5% к цене')}${pb(p.glass,'glass','🛡 Стекло','150 ₽ · +3%')}${pb(p.photo,'photo','📸 Фото','+5% к цене')}</div>`;
+ const fx=p.defects.filter(k=>D[k].cost);
+ if(fx.length)h+=`<div class=m style="margin-top:10px"><b>Ремонт</b></div>`+fx.map(k=>{const d=D[k],sv=r50(p.base*d.cost),df=Math.max(100,r50(p.base*d.cost*.4)),ex=r50(p.base*d.cost*1.6),net=Math.round(mv(p)*d.pen)-sv;
+  return`<div style="border-top:1px solid var(--bd);padding-top:8px;margin-top:8px"><b style="font-size:14px">${d.n}</b><br><span class=m>выгода ${net>=0?'+':''}${rub(net)} · шанс самому ${Math.round(chance(k)*100)}%</span><div class=g style="grid-template-columns:repeat(3,1fr)"><button onclick="diy(${p.id},'${k}')">🔧 Сам<br><span class=m>${rub(df)}</span></button><button onclick="svc(${p.id},'${k}')">🏪 Сервис<br><span class=m>${rub(sv)} · 1 день</span></button><button class=pr onclick="svcX(${p.id},'${k}')">⚡ Сразу<br><span class=m>${rub(ex)}</span></button></div></div>`}).join('');
+ h+=`<div class=m style="margin-top:12px"><b>Продажа</b>${p.defects.length?` <label style="float:right"><input type=checkbox ${p.hideOpt?'checked':''} onchange="hideOpt(${p.id},this.checked)"> скрыть дефекты</label>`:''}</div><div class=g style="grid-template-columns:repeat(3,1fr)">${Object.keys(T).map(t=>{const a=askP(p,t),pr=a-p.buy-p.inv;return`<button onclick="list(${p.id},'${t}')">${T[t][2]}<br><b>${rub(a)}</b><br><span class=${pr>=0?'ok':'bad'}>${pr>=0?'+':''}${rub(pr)}</span></button>`}).join('')}</div><div class=g style="grid-template-columns:1fr"><button onclick="quick(${p.id})">⚡ Скупке сразу: ${rub(quickV(p))}</button></div></div>`;
+ return h}
 </script></body></html>
